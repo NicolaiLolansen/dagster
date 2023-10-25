@@ -45,6 +45,8 @@ from .partition import (
     ScheduleType,
     cron_schedule_from_schedule_type_and_offsets,
 )
+from dagster._utils import xor
+from dagster._serdes import whitelist_for_serdes, NamedTupleSerializer
 from .partition_key_range import PartitionKeyRange
 
 
@@ -1392,10 +1394,121 @@ def weekly_partitioned_config(
     return inner
 
 
-class TimeWindowPartitionsSubset(PartitionsSubset):
+def _add_partitions_to_time_windows(
+    partitions_def: TimeWindowPartitionsDefinition,
+    initial_windows: Sequence[TimeWindow],
+    partition_keys: Sequence[str],
+    validate: bool = True,
+) -> Tuple[Sequence[TimeWindow], int]:
+    """Merges a set of partition keys into an existing set of time windows, returning the
+    minimized set of time windows and the number of partitions added.
+    """
+    result_windows = [*initial_windows]
+    time_windows = partitions_def.time_windows_for_partition_keys(
+        frozenset(partition_keys), validate=validate
+    )
+    num_added_partitions = 0
+    for window in sorted(time_windows):
+        # go in reverse order because it's more common to add partitions at the end than the
+        # beginning
+        for i in reversed(range(len(result_windows))):
+            included_window = result_windows[i]
+            lt_end_of_range = window.start < included_window.end
+            gte_start_of_range = window.start >= included_window.start
+
+            if lt_end_of_range and gte_start_of_range:
+                break
+
+            if not lt_end_of_range:
+                merge_with_range = included_window.end == window.start
+                merge_with_later_range = i + 1 < len(result_windows) and (
+                    window.end == result_windows[i + 1].start
+                )
+
+                if merge_with_range and merge_with_later_range:
+                    result_windows[i] = TimeWindow(
+                        included_window.start, result_windows[i + 1].end
+                    )
+                    del result_windows[i + 1]
+                elif merge_with_range:
+                    result_windows[i] = TimeWindow(included_window.start, window.end)
+                elif merge_with_later_range:
+                    result_windows[i + 1] = TimeWindow(window.start, result_windows[i + 1].end)
+                else:
+                    result_windows.insert(i + 1, window)
+
+                num_added_partitions += 1
+                break
+        else:
+            if result_windows and window.start == result_windows[0].start:
+                result_windows[0] = TimeWindow(window.start, included_window.end)  # type: ignore
+            else:
+                result_windows.insert(0, window)
+
+            num_added_partitions += 1
+
+    return result_windows, num_added_partitions
+
+class TimeWindowPartitionsSubsetSerializer(NamedTupleSerializer):
+    def after_pack(self, **packed_dict: Any) -> Mapping[str, Any]:
+        partitions_def = packed_dict["partitions_def"]
+
+        result_time_windows, _ = _add_partitions_to_time_windows(
+            partitions_def=partitions_def,
+            initial_windows=[],
+            partition_keys=list(check.not_none(self._included_partition_keys)),
+            validate=False,
+        )
+        self._included_time_windows = result_time_windows
+
+        if packed_dict["included_partition_keys"]:
+
+
+        if packed_dict["op_selection"]:
+            packed_dict["solid_selection_str"] = json.dumps(packed_dict["op_selection"]["__set__"])
+        else:
+            packed_dict["solid_selection_str"] = None
+        del packed_dict["op_selection"]
+        return packed_dict
+
+
+@whitelist_for_serdes(serializer=TimeWindowPartitionsSubsetSerializer)
+class TimeWindowPartitionsSubset(
+    PartitionsSubset,
+    NamedTuple(
+        "_TimeWindowPartitionsSubset",
+        [
+            ("partitions_def", TimeWindowPartitionsDefinition),
+            ("num_partitions", int),
+            ("included_time_windows", Optional[Sequence[TimeWindow]]),
+            ("included_partition_keys", Optional[AbstractSet[str]]),
+        ],
+    ),
+):
     # Every time we change the serialization format, we should increment the version number.
     # This will ensure that we can gracefully degrade when deserializing old data.
     SERIALIZATION_VERSION = 1
+
+    def __new__(
+        cls,
+        partitions_def: TimeWindowPartitionsDefinition,
+        num_partitions: int,
+        included_time_windows: Optional[Sequence[TimeWindow]] = None,
+        included_partition_keys: Optional[AbstractSet[str]] = None,
+    ):
+        return super(TimeWindowPartitionsSubset, cls).__new__(
+            cls,
+            partitions_def=check.inst_param(
+                partitions_def, "partitions_def", TimeWindowPartitionsDefinition
+            ),
+            num_partitions=check.int_param(num_partitions, "num_partitions"),
+            included_time_windows=check.opt_nullable_sequence_param(
+                included_time_windows, "included_time_windows", of_type=TimeWindow
+            ),
+            included_partition_keys=check.opt_nullable_set_param(
+                included_partition_keys, "included_partition_keys", of_type=str
+            ),
+        )
 
     def __init__(
         self,
@@ -1421,7 +1534,8 @@ class TimeWindowPartitionsSubset(PartitionsSubset):
     @property
     def included_time_windows(self) -> Sequence[TimeWindow]:
         if self._included_time_windows is None:
-            result_time_windows, _ = self._add_partitions_to_time_windows(
+            result_time_windows, _ = _add_partitions_to_time_windows(
+                partitions_def=self._partitions_def,
                 initial_windows=[],
                 partition_keys=list(check.not_none(self._included_partition_keys)),
                 validate=False,
@@ -1561,61 +1675,6 @@ class TimeWindowPartitionsSubset(PartitionsSubset):
             for window in self.included_time_windows
         ]
 
-    def _add_partitions_to_time_windows(
-        self,
-        initial_windows: Sequence[TimeWindow],
-        partition_keys: Sequence[str],
-        validate: bool = True,
-    ) -> Tuple[Sequence[TimeWindow], int]:
-        """Merges a set of partition keys into an existing set of time windows, returning the
-        minimized set of time windows and the number of partitions added.
-        """
-        result_windows = [*initial_windows]
-        time_windows = self._partitions_def.time_windows_for_partition_keys(
-            frozenset(partition_keys), validate=validate
-        )
-        num_added_partitions = 0
-        for window in sorted(time_windows):
-            # go in reverse order because it's more common to add partitions at the end than the
-            # beginning
-            for i in reversed(range(len(result_windows))):
-                included_window = result_windows[i]
-                lt_end_of_range = window.start < included_window.end
-                gte_start_of_range = window.start >= included_window.start
-
-                if lt_end_of_range and gte_start_of_range:
-                    break
-
-                if not lt_end_of_range:
-                    merge_with_range = included_window.end == window.start
-                    merge_with_later_range = i + 1 < len(result_windows) and (
-                        window.end == result_windows[i + 1].start
-                    )
-
-                    if merge_with_range and merge_with_later_range:
-                        result_windows[i] = TimeWindow(
-                            included_window.start, result_windows[i + 1].end
-                        )
-                        del result_windows[i + 1]
-                    elif merge_with_range:
-                        result_windows[i] = TimeWindow(included_window.start, window.end)
-                    elif merge_with_later_range:
-                        result_windows[i + 1] = TimeWindow(window.start, result_windows[i + 1].end)
-                    else:
-                        result_windows.insert(i + 1, window)
-
-                    num_added_partitions += 1
-                    break
-            else:
-                if result_windows and window.start == result_windows[0].start:
-                    result_windows[0] = TimeWindow(window.start, included_window.end)  # type: ignore
-                else:
-                    result_windows.insert(0, window)
-
-                num_added_partitions += 1
-
-        return result_windows, num_added_partitions
-
     def with_partition_keys(self, partition_keys: Iterable[str]) -> "TimeWindowPartitionsSubset":
         # if we are representing things as a static set of keys, continue doing so
         if self._included_partition_keys is not None:
@@ -1626,8 +1685,8 @@ class TimeWindowPartitionsSubset(PartitionsSubset):
                 included_partition_keys=new_partitions,
             )
 
-        result_windows, added_partitions = self._add_partitions_to_time_windows(
-            self.included_time_windows, list(partition_keys)
+        result_windows, added_partitions = _add_partitions_to_time_windows(
+            self._partitions_def, self.included_time_windows, list(partition_keys)
         )
 
         return TimeWindowPartitionsSubset(
