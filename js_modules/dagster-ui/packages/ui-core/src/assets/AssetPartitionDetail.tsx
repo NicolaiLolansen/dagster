@@ -39,9 +39,7 @@ import {
 } from './types/AssetPartitionDetail.types';
 import {ASSET_MATERIALIZATION_FRAGMENT, ASSET_OBSERVATION_FRAGMENT} from './useRecentAssetEvents';
 
-export const AssetPartitionDetailLoader: React.FC<{assetKey: AssetKey; partitionKey: string}> = (
-  props,
-) => {
+export const AssetPartitionDetailLoader = (props: {assetKey: AssetKey; partitionKey: string}) => {
   const result = useQuery<AssetPartitionDetailQuery, AssetPartitionDetailQueryVariables>(
     ASSET_PARTITION_DETAIL_QUERY,
     {variables: {assetKey: props.assetKey, partitionKey: props.partitionKey}},
@@ -144,16 +142,7 @@ export const ASSET_PARTITION_DETAIL_QUERY = gql`
   ${ASSET_OBSERVATION_FRAGMENT}
 `;
 
-export const AssetPartitionDetail: React.FC<{
-  assetKey: AssetKey;
-  group: AssetEventGroup;
-  latestRunForPartition: AssetPartitionLatestRunFragment | null;
-  hasLineage: boolean;
-  hasLoadingState?: boolean;
-  stepKey?: string;
-  staleCauses?: LiveDataForNode['staleCauses'];
-  staleStatus?: LiveDataForNode['staleStatus'];
-}> = ({
+export const AssetPartitionDetail = ({
   assetKey,
   stepKey,
   group,
@@ -162,6 +151,15 @@ export const AssetPartitionDetail: React.FC<{
   latestRunForPartition,
   staleCauses,
   staleStatus,
+}: {
+  assetKey: AssetKey;
+  group: AssetEventGroup;
+  latestRunForPartition: AssetPartitionLatestRunFragment | null;
+  hasLineage: boolean;
+  hasLoadingState?: boolean;
+  stepKey?: string;
+  staleCauses?: LiveDataForNode['staleCauses'];
+  staleStatus?: LiveDataForNode['staleStatus'];
 }) => {
   const {latest, partition, all} = group;
 

@@ -102,7 +102,7 @@ interface Props {
   refetch?: () => Promise<void>;
 }
 
-export const LaunchAssetChoosePartitionsDialog: React.FC<Props> = (props) => {
+export const LaunchAssetChoosePartitionsDialog = (props: Props) => {
   const displayName =
     props.assets.length > 1
       ? `${props.assets.length} assets`
@@ -131,14 +131,14 @@ export const LaunchAssetChoosePartitionsDialog: React.FC<Props> = (props) => {
 // Additionally, we want the dialog to reset when it's closed and re-opened so
 // that partition health, etc. is up-to-date.
 //
-const LaunchAssetChoosePartitionsDialogBody: React.FC<Props> = ({
+const LaunchAssetChoosePartitionsDialogBody = ({
   setOpen,
   assets,
   repoAddress,
   target,
   upstreamAssetKeys,
   refetch: _refetch,
-}) => {
+}: Props) => {
   const partitionedAssets = assets.filter((a) => !!a.partitionDefinition);
 
   const {
@@ -702,12 +702,16 @@ const LaunchAssetChoosePartitionsDialogBody: React.FC<Props> = ({
   );
 };
 
-const UpstreamUnavailableWarning: React.FC<{
+const UpstreamUnavailableWarning = ({
+  upstreamAssetKeys,
+  selections,
+  setSelections,
+}: {
   upstreamAssetKeys: AssetKey[];
   selections: PartitionDimensionSelection[];
   setSelections: (next: PartitionDimensionSelection[]) => void;
   displayedPartitionDefinition?: PartitionDefinitionForLaunchAssetFragment;
-}> = ({upstreamAssetKeys, selections, setSelections}) => {
+}) => {
   // We want to warn if an immediately upstream asset 1) has the same partitioning and
   // 2) is missing materializations for keys in `allSelected`. We only offer this feature
   // for single-dimensional partitioned assets because it's difficult to express the
@@ -797,18 +801,18 @@ export const LAUNCH_ASSET_WARNINGS_QUERY = gql`
   ${USING_DEFAULT_LAUNCHER_ALERT_INSTANCE_FRAGMENT}
 `;
 
-const Warnings: React.FC<{
-  launchAsBackfill: boolean;
-  upstreamAssetKeys: AssetKey[];
-  selections: PartitionDimensionSelection[];
-  setSelections: (next: PartitionDimensionSelection[]) => void;
-  displayedPartitionDefinition?: PartitionDefinitionForLaunchAssetFragment | null;
-}> = ({
+const Warnings = ({
   launchAsBackfill,
   upstreamAssetKeys,
   selections,
   setSelections,
   displayedPartitionDefinition,
+}: {
+  launchAsBackfill: boolean;
+  upstreamAssetKeys: AssetKey[];
+  selections: PartitionDimensionSelection[];
+  setSelections: (next: PartitionDimensionSelection[]) => void;
+  displayedPartitionDefinition?: PartitionDefinitionForLaunchAssetFragment | null;
 }) => {
   const warningsResult = useQuery<LaunchAssetWarningsQuery, LaunchAssetWarningsQueryVariables>(
     LAUNCH_ASSET_WARNINGS_QUERY,
