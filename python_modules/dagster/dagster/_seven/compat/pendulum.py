@@ -3,6 +3,7 @@ from contextlib import contextmanager
 
 import packaging.version
 import pendulum
+from typing_extensions import TypeAlias
 
 _IS_PENDULUM_2 = (
     hasattr(pendulum, "__version__")
@@ -45,7 +46,7 @@ def create_pendulum_time(year, month, day, *args, **kwargs):
     )
 
 
-PendulumDateTime = (
+PendulumDateTime: TypeAlias = (
     pendulum.DateTime if _IS_PENDULUM_2 else pendulum.Pendulum  # type: ignore[attr-defined]
 )
 
