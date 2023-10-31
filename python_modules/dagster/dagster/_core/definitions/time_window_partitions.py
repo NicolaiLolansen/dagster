@@ -1426,9 +1426,7 @@ def _add_partitions_to_time_windows(
                 )
 
                 if merge_with_range and merge_with_later_range:
-                    result_windows[i] = TimeWindow(
-                        included_window.start, result_windows[i + 1].end
-                    )
+                    result_windows[i] = TimeWindow(included_window.start, result_windows[i + 1].end)
                     del result_windows[i + 1]
                 elif merge_with_range:
                     result_windows[i] = TimeWindow(included_window.start, window.end)
@@ -1449,26 +1447,22 @@ def _add_partitions_to_time_windows(
 
     return result_windows, num_added_partitions
 
+
 class TimeWindowPartitionsSubsetSerializer(NamedTupleSerializer):
     def after_pack(self, **packed_dict: Any) -> Mapping[str, Any]:
         partitions_def = packed_dict["partitions_def"]
 
         result_time_windows, _ = _add_partitions_to_time_windows(
             partitions_def=partitions_def,
-            initial_windows=[],
-            partition_keys=list(check.not_none(self._included_partition_keys)),
+            initial_windows=packed_dict["included_time_windows"],
+            partition_keys=list(check.not_none(packed_dict["included_partition_keys"])),
             validate=False,
         )
         self._included_time_windows = result_time_windows
 
-        if packed_dict["included_partition_keys"]:
+        packed_dict["included_partition_keys"] = None
+        packed_dict["result_time_windows"] = result_time_windows
 
-
-        if packed_dict["op_selection"]:
-            packed_dict["solid_selection_str"] = json.dumps(packed_dict["op_selection"]["__set__"])
-        else:
-            packed_dict["solid_selection_str"] = None
-        del packed_dict["op_selection"]
         return packed_dict
 
 

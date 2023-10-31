@@ -1060,8 +1060,10 @@ class StepExecutionContext(PlanExecutionContext, IStepContext):
 
         # TODO: this needs to account for observations also
         event_type = DagsterEventType.ASSET_MATERIALIZATION
-        tags_by_partition = self.instance._event_storage.get_latest_tags_by_partition(  # noqa: SLF001
-            key, event_type, [DATA_VERSION_TAG], asset_partitions=list(partition_keys)
+        tags_by_partition = (
+            self.instance._event_storage.get_latest_tags_by_partition(  # noqa: SLF001
+                key, event_type, [DATA_VERSION_TAG], asset_partitions=list(partition_keys)
+            )
         )
         partition_data_versions = [
             pair[1][DATA_VERSION_TAG]
@@ -1101,8 +1103,19 @@ class StepExecutionContext(PlanExecutionContext, IStepContext):
 
     def asset_partition_key_range_for_input(self, input_name: str) -> PartitionKeyRange:
         subset = self.asset_partitions_subset_for_input(input_name)
+
+        # TODO refactor upstream_asset_partitions_def as method
+        asset_layer = self.job_def.asset_layer
+        upstream_asset_key = asset_layer.asset_key_for_input(self.node_handle, input_name)
+        check.not_none(upstream_asset_key)
+        upstream_asset_partitions_def = asset_layer.partitions_def_for_asset(
+            cast(AssetKey, upstream_asset_key)
+        )
+        check.not_none(upstream_asset_partitions_def)
+
         partition_key_ranges = subset.get_partition_key_ranges(
-            dynamic_partitions_store=self.instance
+            partitions_def=cast(PartitionsDefinition, upstream_asset_partitions_def),
+            dynamic_partitions_store=self.instance,
         )
 
         if len(partition_key_ranges) != 1:
@@ -1127,7 +1140,9 @@ class StepExecutionContext(PlanExecutionContext, IStepContext):
                 partitions_def = assets_def.partitions_def if assets_def else None
                 partitions_subset = (
                     partitions_def.empty_subset().with_partition_key_range(
-                        self.asset_partition_key_range, dynamic_partitions_store=self.instance
+                        partitions_def,
+                        self.asset_partition_key_range,
+                        dynamic_partitions_store=self.instance,
                     )
                     if partitions_def
                     else None

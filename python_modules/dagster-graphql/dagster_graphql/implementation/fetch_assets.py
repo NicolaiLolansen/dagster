@@ -26,9 +26,10 @@ from dagster import (
 )
 from dagster._core.definitions.data_time import CachingDataTimeResolver
 from dagster._core.definitions.external_asset_graph import ExternalAssetGraph
-from dagster._core.definitions.multi_dimensional_partitions import (
-    MultiPartitionsSubset,
-)
+
+# from dagster._core.definitions.multi_dimensional_partitions import (
+#     # MultiPartitionsSubset,
+# )
 from dagster._core.definitions.partition import (
     CachingDynamicPartitionsLoader,
     DefaultPartitionsSubset,
@@ -393,6 +394,7 @@ def build_partition_statuses(
     materialized_partitions_subset: Optional[PartitionsSubset],
     failed_partitions_subset: Optional[PartitionsSubset],
     in_progress_partitions_subset: Optional[PartitionsSubset],
+    partitions_def: Optional[PartitionsDefinition],
 ) -> Union[
     "GrapheneTimePartitionStatuses",
     "GrapheneDefaultPartitionStatuses",
@@ -427,7 +429,8 @@ def build_partition_statuses(
         " in_progress_partitions_subset to be of the same type",
     )
 
-    if isinstance(materialized_partitions_subset, TimeWindowPartitionsSubset):
+    if isinstance(partitions_def, TimeWindowPartitionsDefinition):
+        # if isinstance(materialized_partitions_subset, TimeWindowPartitionsSubset):
         ranges = fetch_flattened_time_window_ranges(
             {
                 PartitionRangeStatus.MATERIALIZED: materialized_partitions_subset,
@@ -442,7 +445,7 @@ def build_partition_statuses(
         graphene_ranges = []
         for r in ranges:
             partition_key_range = cast(
-                TimeWindowPartitionsDefinition, materialized_partitions_subset.partitions_def
+                TimeWindowPartitionsDefinition, partitions_def
             ).get_partition_key_range_for_time_window(r.time_window)
             graphene_ranges.append(
                 GrapheneTimePartitionRangeStatus(
@@ -454,14 +457,17 @@ def build_partition_statuses(
                 )
             )
         return GrapheneTimePartitionStatuses(ranges=graphene_ranges)
-    elif isinstance(materialized_partitions_subset, MultiPartitionsSubset):
+    elif isinstance(partitions_def, MultiPartitionsDefinition):
+        # elif isinstance(materialized_partitions_subset, MultiPartitionsSubset):
         return get_2d_run_length_encoded_partitions(
             dynamic_partitions_store,
             materialized_partitions_subset,
             failed_partitions_subset,
             in_progress_partitions_subset,
+            partitions_def,
         )
-    elif isinstance(materialized_partitions_subset, DefaultPartitionsSubset):
+    elif partitions_def:
+        # elif isinstance(materialized_partitions_subset, DefaultPartitionsSubset):
         materialized_keys = materialized_partitions_subset.get_partition_keys()
         failed_keys = failed_partitions_subset.get_partition_keys()
         in_progress_keys = in_progress_partitions_subset.get_partition_keys()
@@ -485,21 +491,18 @@ def get_2d_run_length_encoded_partitions(
     materialized_partitions_subset: PartitionsSubset,
     failed_partitions_subset: PartitionsSubset,
     in_progress_partitions_subset: PartitionsSubset,
+    partitions_def: MultiPartitionsDefinition,
 ) -> "GrapheneMultiPartitionStatuses":
     from ..schema.pipelines.pipeline import (
         GrapheneMultiPartitionRangeStatuses,
         GrapheneMultiPartitionStatuses,
     )
 
-    if (
-        not isinstance(materialized_partitions_subset.partitions_def, MultiPartitionsDefinition)
-        or not isinstance(failed_partitions_subset.partitions_def, MultiPartitionsDefinition)
-        or not isinstance(in_progress_partitions_subset.partitions_def, MultiPartitionsDefinition)
-    ):
+    if not isinstance(partitions_def, MultiPartitionsDefinition):
         check.failed("Can only fetch 2D run length encoded partitions for multipartitioned assets")
 
-    primary_dim = materialized_partitions_subset.partitions_def.primary_dimension
-    secondary_dim = materialized_partitions_subset.partitions_def.secondary_dimension
+    primary_dim = partitions_def.primary_dimension
+    secondary_dim = partitions_def.secondary_dimension
 
     dim2_materialized_partition_subset_by_dim1: Dict[str, PartitionsSubset] = defaultdict(
         lambda: secondary_dim.partitions_def.empty_subset()
@@ -511,7 +514,9 @@ def get_2d_run_length_encoded_partitions(
             partition_key.keys_by_dimension[primary_dim.name]
         ] = dim2_materialized_partition_subset_by_dim1[
             partition_key.keys_by_dimension[primary_dim.name]
-        ].with_partition_keys([partition_key.keys_by_dimension[secondary_dim.name]])
+        ].with_partition_keys(
+            [partition_key.keys_by_dimension[secondary_dim.name]]
+        )
 
     dim2_failed_partition_subset_by_dim1: Dict[str, PartitionsSubset] = defaultdict(
         lambda: secondary_dim.partitions_def.empty_subset()
@@ -523,7 +528,9 @@ def get_2d_run_length_encoded_partitions(
             partition_key.keys_by_dimension[primary_dim.name]
         ] = dim2_failed_partition_subset_by_dim1[
             partition_key.keys_by_dimension[primary_dim.name]
-        ].with_partition_keys([partition_key.keys_by_dimension[secondary_dim.name]])
+        ].with_partition_keys(
+            [partition_key.keys_by_dimension[secondary_dim.name]]
+        )
 
     dim2_in_progress_partition_subset_by_dim1: Dict[str, PartitionsSubset] = defaultdict(
         lambda: secondary_dim.partitions_def.empty_subset()
@@ -535,7 +542,9 @@ def get_2d_run_length_encoded_partitions(
             partition_key.keys_by_dimension[primary_dim.name]
         ] = dim2_in_progress_partition_subset_by_dim1[
             partition_key.keys_by_dimension[primary_dim.name]
-        ].with_partition_keys([partition_key.keys_by_dimension[secondary_dim.name]])
+        ].with_partition_keys(
+            [partition_key.keys_by_dimension[secondary_dim.name]]
+        )
 
     materialized_2d_ranges = []
 
@@ -599,6 +608,7 @@ def get_2d_run_length_encoded_partitions(
                             dim2_materialized_partition_subset_by_dim1[start_key],
                             dim2_failed_partition_subset_by_dim1[start_key],
                             dim2_in_progress_partition_subset_by_dim1[start_key],
+                            secondary_dim.partitions_def,
                         ),
                     )
                 )

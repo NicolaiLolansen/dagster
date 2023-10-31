@@ -74,7 +74,8 @@ def test_access_partition_keys_from_context_non_identity_partition_mapping():
             partition_keys = list(downstream_partitions_subset.get_partition_keys())
             return UpstreamPartitionsResult(
                 upstream_partitions_def.empty_subset().with_partition_key_range(
-                    PartitionKeyRange(str(max(1, int(partition_keys[0]) - 1)), partition_keys[-1])
+                    upstream_partitions_def,
+                    PartitionKeyRange(str(max(1, int(partition_keys[0]) - 1)), partition_keys[-1]),
                 ),
                 [],
             )
@@ -260,9 +261,9 @@ def test_specific_partitions_partition_mapping_downstream_partitions():
 
     # cases where at least one of the specific partitions is in the upstream partitions subset
     for partition_subset in [
-        DefaultPartitionsSubset(upstream_partitions_def, {"a"}),
-        DefaultPartitionsSubset(upstream_partitions_def, {"a", "b"}),
-        DefaultPartitionsSubset(upstream_partitions_def, {"a", "b", "c", "d"}),
+        DefaultPartitionsSubset({"a"}),
+        DefaultPartitionsSubset({"a", "b"}),
+        DefaultPartitionsSubset({"a", "b", "c", "d"}),
     ]:
         assert (
             partition_mapping.get_downstream_partitions_for_partitions(
@@ -272,8 +273,8 @@ def test_specific_partitions_partition_mapping_downstream_partitions():
         )
 
     for partition_subset in [
-        DefaultPartitionsSubset(upstream_partitions_def, {"c"}),
-        DefaultPartitionsSubset(upstream_partitions_def, {"c", "d"}),
+        DefaultPartitionsSubset({"c"}),
+        DefaultPartitionsSubset({"c", "d"}),
     ]:
         assert (
             partition_mapping.get_downstream_partitions_for_partitions(

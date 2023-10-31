@@ -223,7 +223,8 @@ def test_custom_unsupported_partition_mapping():
             partition_keys = list(downstream_partitions_subset.get_partition_keys())
             return UpstreamPartitionsResult(
                 upstream_partitions_def.empty_subset().with_partition_key_range(
-                    PartitionKeyRange(str(max(1, int(partition_keys[0]) - 1)), partition_keys[-1])
+                    upstream_partitions_def,
+                    PartitionKeyRange(str(max(1, int(partition_keys[0]) - 1)), partition_keys[-1]),
                 ),
                 [],
             )

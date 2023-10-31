@@ -605,7 +605,7 @@ def build_input_context(
     )
     if asset_partitions_def and asset_partition_key_range:
         asset_partitions_subset = asset_partitions_def.empty_subset().with_partition_key_range(
-            asset_partition_key_range, dynamic_partitions_store=instance
+            asset_partitions_def, asset_partition_key_range, dynamic_partitions_store=instance
         )
     elif asset_partition_key_range:
         asset_partitions_subset = KeyRangeNoPartitionsDefPartitionsSubset(asset_partition_key_range)

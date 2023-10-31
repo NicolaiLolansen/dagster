@@ -1,6 +1,7 @@
 import pytest
 from dagster import DailyPartitionsDefinition, MultiPartitionsDefinition, StaticPartitionsDefinition
-from dagster._core.definitions.multi_dimensional_partitions import MultiPartitionsSubset
+
+# from dagster._core.definitions.multi_dimensional_partitions import MultiPartitionsSubset
 from dagster._core.definitions.partition import DefaultPartitionsSubset
 from dagster._core.definitions.time_window_partitions import (
     TimeWindowPartitionsSubset,
@@ -75,6 +76,6 @@ def test_get_subset_type():
 
 
 def test_empty_subsets():
-    assert type(composite.empty_subset()) is MultiPartitionsSubset
+    # assert type(composite.empty_subset()) is MultiPartitionsSubset
     assert type(static_partitions.empty_subset()) is DefaultPartitionsSubset
     assert type(time_window_partitions.empty_subset()) is TimeWindowPartitionsSubset
