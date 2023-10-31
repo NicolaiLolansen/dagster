@@ -362,7 +362,7 @@ class InputContext:
             )
 
         partition_key_ranges = subset.get_partition_key_ranges(
-            dynamic_partitions_store=self.instance
+            self.asset_partitions_def, dynamic_partitions_store=self.instance
         )
         if len(partition_key_ranges) != 1:
             check.failed(
@@ -654,6 +654,7 @@ class KeyRangeNoPartitionsDefPartitionsSubset(PartitionsSubset):
 
     def get_partition_key_ranges(
         self,
+        partitions_def: "PartitionsDefinition",
         current_time: Optional[datetime] = None,
         dynamic_partitions_store: Optional[DynamicPartitionsStore] = None,
     ) -> Sequence[PartitionKeyRange]:

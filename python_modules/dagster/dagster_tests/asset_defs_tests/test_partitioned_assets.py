@@ -104,10 +104,13 @@ def get_downstream_partitions_for_partition_range(
     downstream_partitions_subset = (
         downstream_partition_mapping.get_downstream_partitions_for_partitions(
             upstream_partitions_subset,
+            upstream_partitions_def,
             downstream_assets_def.partitions_def,
         )
     )
-    downstream_key_ranges = downstream_partitions_subset.get_partition_key_ranges()
+    downstream_key_ranges = downstream_partitions_subset.get_partition_key_ranges(
+        downstream_assets_def.partitions_def
+    )
     check.invariant(len(downstream_key_ranges) == 1)
     return downstream_key_ranges[0]
 
