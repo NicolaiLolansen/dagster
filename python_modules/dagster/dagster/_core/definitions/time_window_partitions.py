@@ -1767,6 +1767,9 @@ class TimeWindowPartitionsSubset(
             }
         )
 
+    def get_partitions_def(self) -> Optional[PartitionsDefinition]:
+        return self.partitions_def
+
     def with_partitions_def(
         self, partitions_def: TimeWindowPartitionsDefinition
     ) -> "TimeWindowPartitionsSubset":

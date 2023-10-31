@@ -991,14 +991,14 @@ class PartitionsSubset(ABC, Generic[T_str]):
     def __sub__(self, other: "PartitionsSubset") -> "PartitionsSubset[T_str]":
         if self is other:
             return self.empty_subset()
-        return self.empty_subset().with_partition_keys(
+        return self.empty_subset(self.get_partitions_def()).with_partition_keys(
             set(self.get_partition_keys()).difference(set(other.get_partition_keys()))
         )
 
     def __and__(self, other: "PartitionsSubset") -> "PartitionsSubset[T_str]":
         if self is other:
             return self
-        return self.empty_subset().with_partition_keys(
+        return self.empty_subset(self.get_partitions_def()).with_partition_keys(
             set(self.get_partition_keys()) & set(other.get_partition_keys())
         )
 
@@ -1037,6 +1037,10 @@ class PartitionsSubset(ABC, Generic[T_str]):
     def empty_subset(
         cls, partitions_def: Optional[PartitionsDefinition] = None
     ) -> "PartitionsSubset[T_str]":
+        ...
+
+    @abstractmethod
+    def get_partitions_def(self) -> Optional[PartitionsDefinition]:
         ...
 
 
@@ -1106,6 +1110,9 @@ class DefaultPartitionsSubset(
 
     def get_partition_keys(self, current_time: Optional[datetime] = None) -> Iterable[str]:
         return self.subset
+
+    def get_partitions_def(self) -> Optional[PartitionsDefinition]:
+        return None
 
     def get_partition_key_ranges(
         self,

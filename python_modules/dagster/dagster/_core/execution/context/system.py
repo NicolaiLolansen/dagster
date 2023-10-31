@@ -1060,8 +1060,10 @@ class StepExecutionContext(PlanExecutionContext, IStepContext):
 
         # TODO: this needs to account for observations also
         event_type = DagsterEventType.ASSET_MATERIALIZATION
-        tags_by_partition = self.instance._event_storage.get_latest_tags_by_partition(  # noqa: SLF001
-            key, event_type, [DATA_VERSION_TAG], asset_partitions=list(partition_keys)
+        tags_by_partition = (
+            self.instance._event_storage.get_latest_tags_by_partition(  # noqa: SLF001
+                key, event_type, [DATA_VERSION_TAG], asset_partitions=list(partition_keys)
+            )
         )
         partition_data_versions = [
             pair[1][DATA_VERSION_TAG]
@@ -1155,6 +1157,7 @@ class StepExecutionContext(PlanExecutionContext, IStepContext):
                 mapped_partitions_result = (
                     partition_mapping.get_upstream_mapped_partitions_result_for_partitions(
                         partitions_subset,
+                        partitions_def,
                         upstream_asset_partitions_def,
                         dynamic_partitions_store=self.instance,
                     )
