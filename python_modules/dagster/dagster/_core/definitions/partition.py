@@ -9,6 +9,7 @@ from datetime import (
 )
 from enum import Enum
 from typing import (
+    AbstractSet,
     Any,
     Callable,
     Dict,
@@ -18,11 +19,9 @@ from typing import (
     NamedTuple,
     Optional,
     Sequence,
-    Set,
     Type,
     Union,
     cast,
-    AbstractSet,
 )
 
 from dateutil.relativedelta import relativedelta
@@ -219,7 +218,7 @@ class PartitionsDefinition(ABC, Generic[T_str]):
         ]
 
     def empty_subset(self) -> "PartitionsSubset":
-        return self.partitions_subset_class.empty_subset()
+        return self.partitions_subset_class.empty_subset(self)
 
     def subset_with_partition_keys(self, partition_keys: Iterable[str]) -> "PartitionsSubset":
         return self.empty_subset().with_partition_keys(partition_keys)
@@ -1035,7 +1034,9 @@ class PartitionsSubset(ABC, Generic[T_str]):
 
     @classmethod
     @abstractmethod
-    def empty_subset(cls) -> "PartitionsSubset[T_str]":
+    def empty_subset(
+        cls, partitions_def: Optional[PartitionsDefinition] = None
+    ) -> "PartitionsSubset[T_str]":
         ...
 
 
@@ -1196,5 +1197,7 @@ class DefaultPartitionsSubset(
         return f"DefaultPartitionsSubset(subset={self.subset})"
 
     @classmethod
-    def empty_subset(cls) -> "DefaultPartitionsSubset":
+    def empty_subset(
+        cls, partitions_def: Optional[PartitionsDefinition] = None
+    ) -> "DefaultPartitionsSubset":
         return cls()

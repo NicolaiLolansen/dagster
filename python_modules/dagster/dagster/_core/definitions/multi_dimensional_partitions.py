@@ -4,7 +4,6 @@ from datetime import datetime
 from functools import lru_cache, reduce
 from typing import (
     Dict,
-    Iterable,
     List,
     Mapping,
     NamedTuple,

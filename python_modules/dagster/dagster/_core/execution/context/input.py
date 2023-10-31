@@ -408,7 +408,7 @@ class InputContext:
                 " with time windows.",
             )
 
-        time_windows = subset.included_time_windows
+        time_windows = subset.get_included_time_windows()
         if len(time_windows) != 1:
             check.failed(
                 "Tried to access asset_partitions_time_window, but there are "
@@ -640,6 +640,7 @@ class KeyRangeNoPartitionsDefPartitionsSubset(PartitionsSubset):
 
     def get_partition_keys_not_in_subset(
         self,
+        partitions_def: "PartitionsDefinition",
         current_time: Optional[datetime] = None,
         dynamic_partitions_store: Optional[DynamicPartitionsStore] = None,
     ) -> Iterable[str]:
@@ -698,5 +699,7 @@ class KeyRangeNoPartitionsDefPartitionsSubset(PartitionsSubset):
         raise NotImplementedError()
 
     @classmethod
-    def empty_subset(cls, partitions_def: "PartitionsDefinition") -> "PartitionsSubset":
+    def empty_subset(
+        cls, partitions_def: Optional["PartitionsDefinition"] = None
+    ) -> "PartitionsSubset":
         raise NotImplementedError()
