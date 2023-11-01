@@ -130,13 +130,7 @@ export type AssetCheck = {
   canExecuteIndividually: AssetCheckCanExecuteIndividually;
   description: Maybe<Scalars['String']>;
   executionForLatestMaterialization: Maybe<AssetCheckExecution>;
-  executions: Array<AssetCheckExecution>;
   name: Scalars['String'];
-};
-
-export type AssetCheckExecutionsArgs = {
-  cursor?: InputMaybe<Scalars['String']>;
-  limit: Scalars['Int'];
 };
 
 export enum AssetCheckCanExecuteIndividually {
@@ -335,7 +329,6 @@ export type AssetMetadataEntry = MetadataEntry & {
 
 export type AssetNode = {
   __typename: 'AssetNode';
-  assetChecks: Array<AssetCheck>;
   assetChecksOrError: AssetChecksOrError;
   assetKey: AssetKey;
   assetMaterializationUsedData: Array<MaterializationUpstreamDataVersion>;
@@ -4640,7 +4633,6 @@ export const buildAssetCheck = (
         : relationshipsToOmit.has('AssetCheckExecution')
         ? ({} as AssetCheckExecution)
         : buildAssetCheckExecution({}, relationshipsToOmit),
-    executions: overrides && overrides.hasOwnProperty('executions') ? overrides.executions! : [],
     name: overrides && overrides.hasOwnProperty('name') ? overrides.name! : 'dignissimos',
   };
 };
@@ -5087,7 +5079,6 @@ export const buildAssetNode = (
   relationshipsToOmit.add('AssetNode');
   return {
     __typename: 'AssetNode',
-    assetChecks: overrides && overrides.hasOwnProperty('assetChecks') ? overrides.assetChecks! : [],
     assetChecksOrError:
       overrides && overrides.hasOwnProperty('assetChecksOrError')
         ? overrides.assetChecksOrError!
