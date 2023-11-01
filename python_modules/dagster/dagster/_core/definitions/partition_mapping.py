@@ -327,9 +327,8 @@ class BaseMultiPartitionMapping(ABC):
         a_partition_keys_by_dimension = defaultdict(set)
         if isinstance(a_partitions_def, MultiPartitionsDefinition):
             for partition_key in a_partitions_subset.get_partition_keys():
-                for dimension_name, key in cast(
-                    MultiPartitionKey, partition_key
-                ).keys_by_dimension.items():
+                key = a_partitions_def.get_partition_key_from_str(partition_key)
+                for dimension_name, key in key.keys_by_dimension.items():
                     a_partition_keys_by_dimension[dimension_name].add(key)
         else:
             for partition_key in a_partitions_subset.get_partition_keys():
@@ -451,7 +450,9 @@ class BaseMultiPartitionMapping(ABC):
                     [
                         dep_b_keys_by_a_dim_and_key[dim_name][
                             (
-                                cast(MultiPartitionKey, key).keys_by_dimension[dim_name]
+                                cast(MultiPartitionsDefinition, a_partitions_def)
+                                .get_partition_key_from_str(key)
+                                .keys_by_dimension[dim_name]
                                 if dim_name
                                 else key
                             )
