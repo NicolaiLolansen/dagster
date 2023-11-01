@@ -408,7 +408,8 @@ def test_bfs_filter_asset_subsets(asset_graph_from_assets):
         asset_graph,
         partitions_subsets_by_asset_key={
             asset3.key: asset3.partitions_def.empty_subset().with_partition_key_range(
-                PartitionKeyRange("2022-01-02-00:00", "2022-01-03-23:00")
+                asset3.partitions_def,
+                PartitionKeyRange("2022-01-02-00:00", "2022-01-03-23:00"),
             ),
         },
     )

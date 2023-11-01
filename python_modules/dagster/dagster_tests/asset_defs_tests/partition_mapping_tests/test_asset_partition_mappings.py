@@ -269,7 +269,7 @@ def test_specific_partitions_partition_mapping_downstream_partitions():
     ]:
         assert (
             partition_mapping.get_downstream_partitions_for_partitions(
-                partition_subset, downstream_partitions_def
+                partition_subset, upstream_partitions_def, downstream_partitions_def
             )
             == downstream_partitions_def.subset_with_all_partitions()
         )
@@ -280,7 +280,7 @@ def test_specific_partitions_partition_mapping_downstream_partitions():
     ]:
         assert (
             partition_mapping.get_downstream_partitions_for_partitions(
-                partition_subset, downstream_partitions_def
+                partition_subset, upstream_partitions_def, downstream_partitions_def
             )
             == downstream_partitions_def.empty_subset()
         )
@@ -567,13 +567,13 @@ def test_identity_partition_mapping():
     zx = StaticPartitionsDefinition(["z", "x"])
 
     result = IdentityPartitionMapping().get_upstream_mapped_partitions_result_for_partitions(
-        zx.empty_subset().with_partition_keys(["z", "x"]), xy
+        zx.empty_subset().with_partition_keys(["z", "x"]), zx, xy
     )
     assert result.partitions_subset.get_partition_keys() == set(["x"])
     assert result.required_but_nonexistent_partition_keys == ["z"]
 
     result = IdentityPartitionMapping().get_downstream_partitions_for_partitions(
-        zx.empty_subset().with_partition_keys(["z", "x"]), xy
+        zx.empty_subset().with_partition_keys(["z", "x"]), zx, xy
     )
     assert result.get_partition_keys() == set(["x"])
 
