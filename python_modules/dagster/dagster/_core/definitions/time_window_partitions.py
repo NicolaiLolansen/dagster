@@ -44,6 +44,7 @@ from .partition import (
     PartitionedConfig,
     PartitionsDefinition,
     PartitionsSubset,
+    PartitionsSubsetDefinition,
     ScheduleType,
     cron_schedule_from_schedule_type_and_offsets,
 )
@@ -761,8 +762,8 @@ class TimeWindowPartitionsDefinition(
     def partitions_subset_class(self) -> Type["PartitionsSubset"]:
         return TimeWindowPartitionsSubset
 
-    def empty_subset(self) -> "PartitionsSubset":
-        return self.partitions_subset_class.empty_subset(self)
+    def empty_subset(self) -> "PartitionsSubsetDefinition":
+        return PartitionsSubsetDefinition.empty_subset(self, self.partitions_subset_class)
 
     def is_valid_partition_key(self, partition_key: str) -> bool:
         try:
@@ -1817,7 +1818,7 @@ class TimeWindowPartitionsSubset(
         )
 
     def __repr__(self) -> str:
-        return f"TimeWindowPartitionsSubset({self.get_partition_key_ranges()})"
+        return f"TimeWindowPartitionsSubset({self.get_partition_key_ranges(self.partitions_def)})"
 
 
 class PartitionRangeStatus(Enum):

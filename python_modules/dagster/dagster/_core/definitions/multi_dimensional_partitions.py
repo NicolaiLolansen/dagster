@@ -509,35 +509,35 @@ class MultiPartitionsDefinition(PartitionsDefinition[MultiPartitionKey]):
 
 
 # class MultiPartitionsSubset(DefaultPartitionsSubset):
-    #     def __new__(cls, subset: Optional[Set[str]], partitions_def: MultiPartitionsDefinition):
-    #         subset = (
-    #             set(
-    #                 [
-    #                     partitions_def.get_partition_key_from_str(key)
-    #                     for key in subset
-    #                     if MULTIPARTITION_KEY_DELIMITER in key
-    #                 ]
-    #             )
-    #             if subset
-    #             else set()
-    #         )
-    #         super(MultiPartitionsSubset, cls).__new__(cls, subset)
+#     def __new__(cls, subset: Optional[Set[str]], partitions_def: MultiPartitionsDefinition):
+#         subset = (
+#             set(
+#                 [
+#                     partitions_def.get_partition_key_from_str(key)
+#                     for key in subset
+#                     if MULTIPARTITION_KEY_DELIMITER in key
+#                 ]
+#             )
+#             if subset
+#             else set()
+#         )
+#         super(MultiPartitionsSubset, cls).__new__(cls, subset)
 
-    #     def with_partition_keys(self, partition_keys: Iterable[str]) -> "MultiPartitionsSubset":
-    #         return MultiPartitionsSubset(
-    #             # cast(MultiPartitionsDefinition, self._partitions_def),
-    #             self.subset
-    #             | set(partition_keys),
-    #         )
+#     def with_partition_keys(self, partition_keys: Iterable[str]) -> "MultiPartitionsSubset":
+#         return MultiPartitionsSubset(
+#             # cast(MultiPartitionsDefinition, self._partitions_def),
+#             self.subset
+#             | set(partition_keys),
+#         )
 
-    # def get_partition_keys(self, partitions_def: MultiPartitionsDefinition) -> Set[str]:
-    #     return set(
-    #         [
-    #             partitions_def.get_partition_key_from_str(key)
-    #             for key in super().get_partition_keys()
-    #             if MULTIPARTITION_KEY_DELIMITER in key
-    #         ]
-    #     )
+# def get_partition_keys(self, partitions_def: MultiPartitionsDefinition) -> Set[str]:
+#     return set(
+#         [
+#             partitions_def.get_partition_key_from_str(key)
+#             for key in super().get_partition_keys()
+#             if MULTIPARTITION_KEY_DELIMITER in key
+#         ]
+#     )
 
 
 def get_tags_from_multi_partition_key(multi_partition_key: MultiPartitionKey) -> Mapping[str, str]:

@@ -477,7 +477,7 @@ def build_partition_statuses(
             - set(in_progress_keys),
             failedPartitions=failed_keys,
             unmaterializedPartitions=materialized_partitions_subset.get_partition_keys_not_in_subset(
-                dynamic_partitions_store=dynamic_partitions_store
+                partitions_def, dynamic_partitions_store=dynamic_partitions_store
             ),
             materializingPartitions=in_progress_keys,
         )

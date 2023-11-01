@@ -9,6 +9,7 @@ from datetime import (
 )
 from enum import Enum
 from typing import (
+    TYPE_CHECKING,
     AbstractSet,
     Any,
     Callable,
@@ -67,6 +68,9 @@ T_PartitionsDefinition = TypeVar(
 # "..." is an invalid substring in partition keys
 # The other escape characters are characters that may not display in the Dagster UI.
 INVALID_PARTITION_SUBSTRINGS = ["...", "\a", "\b", "\f", "\n", "\r", "\t", "\v", "\0"]
+
+if TYPE_CHECKING:
+    from .time_window_partitions import TimeWindow
 
 
 @deprecated(breaking_version="2.0", additional_warn_text="Use string partition keys instead.")
@@ -217,17 +221,19 @@ class PartitionsDefinition(ABC, Generic[T_str]):
             + 1
         ]
 
-    def empty_subset(self) -> "PartitionsSubset":
-        return self.partitions_subset_class.empty_subset(self)
+    def empty_subset(self) -> "PartitionsSubsetDefinition":
+        return PartitionsSubsetDefinition.empty_subset(self, self.partitions_subset_class)
 
-    def subset_with_partition_keys(self, partition_keys: Iterable[str]) -> "PartitionsSubset":
+    def subset_with_partition_keys(
+        self, partition_keys: Iterable[str]
+    ) -> "PartitionsSubsetDefinition":
         return self.empty_subset().with_partition_keys(partition_keys)
 
     def subset_with_all_partitions(
         self,
         current_time: Optional[datetime] = None,
         dynamic_partitions_store: Optional[DynamicPartitionsStore] = None,
-    ) -> "PartitionsSubset":
+    ) -> "PartitionsSubsetDefinition":
         return self.subset_with_partition_keys(
             self.get_partition_keys(
                 current_time=current_time, dynamic_partitions_store=dynamic_partitions_store
@@ -1060,6 +1066,67 @@ class PartitionsSubset(ABC, Generic[T_str]):
     @abstractmethod
     def get_partitions_def(self) -> Optional[PartitionsDefinition]:
         ...
+
+
+class PartitionsSubsetDefinition(NamedTuple):
+    partitions_def: PartitionsDefinition
+    partitions_subset: PartitionsSubset
+
+    @classmethod
+    def empty_subset(
+        cls,
+        partitions_def: "PartitionsDefinition",
+        partitions_subset_class: Type["PartitionsSubset"],
+    ) -> "PartitionsSubsetDefinition":
+        return PartitionsSubsetDefinition(
+            partitions_def, partitions_subset_class.empty_subset(partitions_def)
+        )
+
+    def with_partition_keys(self, partition_keys: Iterable[str]) -> "PartitionsSubsetDefinition":
+        return PartitionsSubsetDefinition(
+            self.partitions_def, self.partitions_subset.with_partition_keys(partition_keys)
+        )
+
+    def get_partition_key_ranges(
+        self,
+        current_time: Optional[datetime] = None,
+        dynamic_partitions_store: Optional[DynamicPartitionsStore] = None,
+    ) -> Sequence[PartitionKeyRange]:
+        return self.partitions_subset.get_partition_key_ranges(
+            self.partitions_def, current_time, dynamic_partitions_store
+        )
+
+    def with_partition_key_range(
+        self,
+        partition_key_range: PartitionKeyRange,
+        dynamic_partitions_store: Optional[DynamicPartitionsStore] = None,
+    ) -> "PartitionsSubsetDefinition":
+        return PartitionsSubsetDefinition(
+            self.partitions_def,
+            self.partitions_subset.with_partition_key_range(
+                self.partitions_def, partition_key_range, dynamic_partitions_store
+            ),
+        )
+
+    def get_partition_keys_not_in_subset(
+        self,
+        current_time: Optional[datetime] = None,
+        dynamic_partitions_store: Optional[DynamicPartitionsStore] = None,
+    ) -> Iterable[str]:
+        return self.partitions_subset.get_partition_keys_not_in_subset(
+            self.partitions_def, current_time, dynamic_partitions_store
+        )
+
+    def get_partition_keys(self, current_time: Optional[datetime] = None) -> Iterable[str]:
+        return self.partitions_subset.get_partition_keys(current_time)
+
+    def get_included_time_windows(self) -> Sequence["TimeWindow"]:
+        from .time_window_partitions import TimeWindowPartitionsSubset
+
+        if not isinstance(self.partitions_subset, TimeWindowPartitionsSubset):
+            check.failed("laksdjalsk")
+
+        return self.partitions_subset.get_included_time_windows()
 
 
 @whitelist_for_serdes

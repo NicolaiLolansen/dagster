@@ -1058,9 +1058,7 @@ def test_get_first_partition_window():
         start_date="2023-01-01", end_offset=1
     ).get_first_partition_window(
         current_time=datetime.strptime("2023-01-01", "%Y-%m-%d")
-    ) == time_window(
-        "2023-01-01", "2023-01-02"
-    )
+    ) == time_window("2023-01-01", "2023-01-02")
 
     assert (
         DailyPartitionsDefinition(start_date="2023-02-15", end_offset=1).get_first_partition_window(
@@ -1073,17 +1071,13 @@ def test_get_first_partition_window():
         start_date="2023-01-01", end_offset=2
     ).get_first_partition_window(
         current_time=datetime.strptime("2023-01-02", "%Y-%m-%d")
-    ) == time_window(
-        "2023-01-01", "2023-01-02"
-    )
+    ) == time_window("2023-01-01", "2023-01-02")
 
     assert MonthlyPartitionsDefinition(
         start_date="2023-01-01", end_offset=1
     ).get_first_partition_window(
         current_time=datetime.strptime("2023-01-15", "%Y-%m-%d")
-    ) == time_window(
-        "2023-01-01", "2023-02-01"
-    )
+    ) == time_window("2023-01-01", "2023-02-01")
 
     assert (
         DailyPartitionsDefinition(
@@ -1096,9 +1090,7 @@ def test_get_first_partition_window():
         start_date="2023-01-15", end_offset=-1
     ).get_first_partition_window(
         current_time=datetime.strptime("2023-01-17", "%Y-%m-%d")
-    ) == time_window(
-        "2023-01-15", "2023-01-16"
-    )
+    ) == time_window("2023-01-15", "2023-01-16")
 
     assert (
         DailyPartitionsDefinition(
@@ -1111,9 +1103,7 @@ def test_get_first_partition_window():
         start_date="2023-01-15", end_offset=-2
     ).get_first_partition_window(
         current_time=datetime.strptime("2023-01-18", "%Y-%m-%d")
-    ) == time_window(
-        "2023-01-15", "2023-01-16"
-    )
+    ) == time_window("2023-01-15", "2023-01-16")
 
     assert (
         MonthlyPartitionsDefinition(
@@ -1133,17 +1123,13 @@ def test_get_first_partition_window():
         start_date="2023-01-15", end_offset=1
     ).get_first_partition_window(
         current_time=datetime(year=2023, month=1, day=15, hour=12, minute=0, second=0)
-    ) == time_window(
-        "2023-01-15", "2023-01-16"
-    )
+    ) == time_window("2023-01-15", "2023-01-16")
 
     assert DailyPartitionsDefinition(
         start_date="2023-01-15", end_offset=1
     ).get_first_partition_window(
         current_time=datetime(year=2023, month=1, day=14, hour=12, minute=0, second=0)
-    ) == time_window(
-        "2023-01-15", "2023-01-16"
-    )
+    ) == time_window("2023-01-15", "2023-01-16")
 
     assert (
         DailyPartitionsDefinition(start_date="2023-01-15", end_offset=1).get_first_partition_window(
@@ -1170,9 +1156,7 @@ def test_get_first_partition_window():
         start_date="2023-01-01", end_offset=-1
     ).get_first_partition_window(
         current_time=datetime.strptime("2023-03-01", "%Y-%m-%d")
-    ) == time_window(
-        "2023-01-01", "2023-02-01"
-    )
+    ) == time_window("2023-01-01", "2023-02-01")
 
 
 def test_invalid_cron_schedule():

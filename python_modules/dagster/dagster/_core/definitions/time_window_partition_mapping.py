@@ -3,7 +3,11 @@ from typing import NamedTuple, Optional, cast
 
 import dagster._check as check
 from dagster._annotations import PublicAttr, experimental_param
-from dagster._core.definitions.partition import PartitionsDefinition, PartitionsSubset
+from dagster._core.definitions.partition import (
+    PartitionsDefinition,
+    PartitionsSubset,
+    PartitionsSubsetDefinition,
+)
 from dagster._core.definitions.partition_mapping import PartitionMapping, UpstreamPartitionsResult
 from dagster._core.definitions.time_window_partitions import (
     TimeWindow,
@@ -106,19 +110,23 @@ class TimeWindowPartitionMapping(
 
     def get_upstream_mapped_partitions_result_for_partitions(
         self,
-        downstream_partitions_subset: Optional[PartitionsSubset],
-        downstream_partitions_def: Optional[PartitionsDefinition],
+        downstream_partitions_subset: Optional[PartitionsSubsetDefinition],
         upstream_partitions_def: PartitionsDefinition,
         current_time: Optional[datetime] = None,
         dynamic_partitions_store: Optional[DynamicPartitionsStore] = None,
     ) -> UpstreamPartitionsResult:
-        if not isinstance(downstream_partitions_subset, TimeWindowPartitionsSubset):
+        if not (
+            downstream_partitions_subset
+            and isinstance(
+                downstream_partitions_subset.partitions_subset, TimeWindowPartitionsSubset
+            )
+        ):
             check.failed("downstream_partitions_subset must be a TimeWindowPartitionsSubset")
 
         return self._map_partitions(
             downstream_partitions_subset.partitions_def,
             upstream_partitions_def,
-            downstream_partitions_subset,
+            downstream_partitions_subset.partitions_subset,
             start_offset=self.start_offset,
             end_offset=self.end_offset,
             current_time=current_time,
@@ -126,21 +134,20 @@ class TimeWindowPartitionMapping(
 
     def get_downstream_partitions_for_partitions(
         self,
-        upstream_partitions_subset: PartitionsSubset,
-        upstream_partitions_def: PartitionsDefinition,
+        upstream_partitions_subset: PartitionsSubsetDefinition,
         downstream_partitions_def: Optional[PartitionsDefinition],
         current_time: Optional[datetime] = None,
         dynamic_partitions_store: Optional[DynamicPartitionsStore] = None,
-    ) -> PartitionsSubset:
+    ) -> PartitionsSubsetDefinition:
         """Returns the partitions in the downstream asset that map to the given upstream partitions.
 
         Filters for partitions that exist at the given current_time, fetching the current time
         if not provided.
         """
         return self._map_partitions(
-            upstream_partitions_def,
+            upstream_partitions_subset.partitions_def,
             downstream_partitions_def,
-            upstream_partitions_subset,
+            upstream_partitions_subset.partitions_subset,
             end_offset=-self.start_offset,
             start_offset=-self.end_offset,
             current_time=current_time,
@@ -295,8 +302,13 @@ class TimeWindowPartitionMapping(
                     )
 
         return UpstreamPartitionsResult(
-            TimeWindowPartitionsSubset(
-                to_partitions_def, num_partitions=None, included_time_windows=filtered_time_windows
+            PartitionsSubsetDefinition(
+                to_partitions_def,
+                TimeWindowPartitionsSubset(
+                    to_partitions_def,
+                    num_partitions=None,
+                    included_time_windows=filtered_time_windows,
+                ),
             ),
             sorted(list(required_but_nonexistent_partition_keys)),
         )
@@ -320,7 +332,9 @@ class TimeWindowPartitionMapping(
 
         # Same PartitionsDefinitions
         if from_partitions_def == to_partitions_def:
-            return UpstreamPartitionsResult(from_partitions_subset, [])
+            return UpstreamPartitionsResult(
+                PartitionsSubsetDefinition(from_partitions_def, from_partitions_subset), []
+            )
 
         # Same PartitionsDefinitions except for start and end dates
         if (
@@ -338,7 +352,11 @@ class TimeWindowPartitionMapping(
             )
         ):
             return UpstreamPartitionsResult(
-                from_partitions_subset.with_partitions_def(to_partitions_def), []
+                PartitionsSubsetDefinition(
+                    to_partitions_def,
+                    from_partitions_subset.with_partitions_def(to_partitions_def),
+                ),
+                [],
             )
 
         # Daily to hourly
@@ -358,10 +376,13 @@ class TimeWindowPartitionMapping(
             )
         ):
             return UpstreamPartitionsResult(
-                TimeWindowPartitionsSubset(
-                    partitions_def=to_partitions_def,
-                    num_partitions=None,
-                    included_time_windows=from_partitions_subset.get_included_time_windows(),
+                PartitionsSubsetDefinition(
+                    to_partitions_def,
+                    TimeWindowPartitionsSubset(
+                        partitions_def=to_partitions_def,
+                        num_partitions=None,
+                        included_time_windows=from_partitions_subset.get_included_time_windows(),
+                    ),
                 ),
                 [],
             )

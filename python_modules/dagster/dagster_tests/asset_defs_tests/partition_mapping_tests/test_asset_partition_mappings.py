@@ -41,6 +41,7 @@ from dagster._core.definitions.partition import (
     DefaultPartitionsSubset,
     DynamicPartitionsDefinition,
     PartitionsSubset,
+    PartitionsSubsetDefinition,
 )
 from dagster._core.definitions.partition_key_range import PartitionKeyRange
 from dagster._core.definitions.partition_mapping import (
@@ -64,7 +65,6 @@ def test_access_partition_keys_from_context_non_identity_partition_mapping():
         def get_upstream_mapped_partitions_result_for_partitions(
             self,
             downstream_partitions_subset: Optional[PartitionsSubset],
-            downstream_partitions_def: Optional[PartitionsDefinition],
             upstream_partitions_def: PartitionsDefinition,
             current_time: Optional[datetime] = None,
             dynamic_partitions_store: Optional[DynamicPartitionsStore] = None,
@@ -75,8 +75,7 @@ def test_access_partition_keys_from_context_non_identity_partition_mapping():
             partition_keys = list(downstream_partitions_subset.get_partition_keys())
             return UpstreamPartitionsResult(
                 upstream_partitions_def.empty_subset().with_partition_key_range(
-                    upstream_partitions_def,
-                    PartitionKeyRange(str(max(1, int(partition_keys[0]) - 1)), partition_keys[-1]),
+                    PartitionKeyRange(str(max(1, int(partition_keys[0]) - 1)), partition_keys[-1])
                 ),
                 [],
             )
@@ -84,7 +83,6 @@ def test_access_partition_keys_from_context_non_identity_partition_mapping():
         def get_downstream_partitions_for_partitions(
             self,
             upstream_partitions_subset: PartitionsSubset,
-            upstream_partitions_def: PartitionsDefinition,
             downstream_partitions_def: PartitionsDefinition,
             current_time: Optional[datetime] = None,
             dynamic_partitions_store: Optional[DynamicPartitionsStore] = None,
@@ -269,7 +267,8 @@ def test_specific_partitions_partition_mapping_downstream_partitions():
     ]:
         assert (
             partition_mapping.get_downstream_partitions_for_partitions(
-                partition_subset, upstream_partitions_def, downstream_partitions_def
+                PartitionsSubsetDefinition(upstream_partitions_def, partition_subset),
+                downstream_partitions_def,
             )
             == downstream_partitions_def.subset_with_all_partitions()
         )
@@ -280,7 +279,8 @@ def test_specific_partitions_partition_mapping_downstream_partitions():
     ]:
         assert (
             partition_mapping.get_downstream_partitions_for_partitions(
-                partition_subset, upstream_partitions_def, downstream_partitions_def
+                PartitionsSubsetDefinition(upstream_partitions_def, partition_subset),
+                downstream_partitions_def,
             )
             == downstream_partitions_def.empty_subset()
         )
@@ -567,13 +567,13 @@ def test_identity_partition_mapping():
     zx = StaticPartitionsDefinition(["z", "x"])
 
     result = IdentityPartitionMapping().get_upstream_mapped_partitions_result_for_partitions(
-        zx.empty_subset().with_partition_keys(["z", "x"]), zx, xy
+        zx.empty_subset().with_partition_keys(["z", "x"]), xy
     )
     assert result.partitions_subset.get_partition_keys() == set(["x"])
     assert result.required_but_nonexistent_partition_keys == ["z"]
 
     result = IdentityPartitionMapping().get_downstream_partitions_for_partitions(
-        zx.empty_subset().with_partition_keys(["z", "x"]), zx, xy
+        zx.empty_subset().with_partition_keys(["z", "x"]), xy
     )
     assert result.get_partition_keys() == set(["x"])
 
