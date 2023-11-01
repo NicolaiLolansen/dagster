@@ -916,7 +916,6 @@ class GrapheneAssetNode(graphene.ObjectType):
             materialized_partition_subset,
             failed_partition_subset,
             in_progress_subset,
-            partitions_def,
         )
 
     def resolve_partitionStats(

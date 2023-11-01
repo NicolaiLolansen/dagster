@@ -39,7 +39,7 @@ from .assets import AssetsDefinition
 from .backfill_policy import BackfillPolicy
 from .events import AssetKey, AssetKeyPartitionKey
 from .freshness_policy import FreshnessPolicy
-from .partition import PartitionsDefinition, PartitionsSubset
+from .partition import PartitionsDefinition, PartitionsSubset, PartitionsSubsetDefinition
 from .partition_key_range import PartitionKeyRange
 from .partition_mapping import PartitionMapping, UpstreamPartitionsResult, infer_partition_mapping
 from .source_asset import SourceAsset
@@ -360,7 +360,6 @@ class AssetGraph:
         partition_mapping = self.get_partition_mapping(child_asset_key, parent_asset_key)
         child_partitions_subset = partition_mapping.get_downstream_partitions_for_partitions(
             parent_partitions_def.empty_subset().with_partition_keys([parent_partition_key]),
-            parent_partitions_def,
             downstream_partitions_def=child_partitions_def,
             dynamic_partitions_store=dynamic_partitions_store,
             current_time=current_time,
@@ -450,7 +449,6 @@ class AssetGraph:
                 if partition_key
                 else None
             ),
-            downstream_partitions_def=child_partitions_def,
             upstream_partitions_def=parent_partitions_def,
             dynamic_partitions_store=dynamic_partitions_store,
             current_time=current_time,
@@ -568,7 +566,7 @@ class AssetGraph:
         initial_asset_key = next(iter(initial_subset.asset_keys))
         queue = deque([initial_asset_key])
 
-        queued_subsets_by_asset_key: Dict[AssetKey, Optional[PartitionsSubset]] = {
+        queued_subsets_by_asset_key: Dict[AssetKey, Optional[PartitionsSubsetDefinition]] = {
             initial_asset_key: (
                 initial_subset.get_partitions_subset(initial_asset_key)
                 if self.get_partitions_def(initial_asset_key)
@@ -581,7 +579,9 @@ class AssetGraph:
             asset_key = queue.popleft()
             partitions_subset = queued_subsets_by_asset_key.get(asset_key)
 
-            if condition_fn(asset_key, partitions_subset):
+            if condition_fn(
+                asset_key, partitions_subset.partitions_subset if partitions_subset else None
+            ):
                 result |= AssetGraphSubset(
                     self,
                     non_partitioned_asset_keys={asset_key} if partitions_subset is None else set(),
@@ -607,7 +607,6 @@ class AssetGraph:
                             child_partitions_subset = (
                                 partition_mapping.get_downstream_partitions_for_partitions(
                                     partitions_subset,
-                                    check.not_none(self.get_partitions_def(asset_key)),
                                     downstream_partitions_def=child_partitions_def,
                                     dynamic_partitions_store=dynamic_partitions_store,
                                     current_time=current_time,

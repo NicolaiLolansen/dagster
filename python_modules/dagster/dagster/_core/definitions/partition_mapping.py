@@ -66,7 +66,7 @@ class PartitionMapping(ABC):
         downstream_partitions_def: PartitionsDefinition,
         current_time: Optional[datetime] = None,
         dynamic_partitions_store: Optional[DynamicPartitionsStore] = None,
-    ) -> PartitionsSubset:
+    ) -> PartitionsSubsetDefinition:
         """Returns the subset of partition keys in the downstream asset that use the data in the given
         partition key subset of the upstream asset.
 

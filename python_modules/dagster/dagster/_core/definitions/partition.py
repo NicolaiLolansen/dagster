@@ -1152,6 +1152,19 @@ class PartitionsSubsetDefinition(NamedTuple):
             self.partitions_def, type(self.partitions_subset)
         ).with_partition_keys(set(self.get_partition_keys()) & set(other.get_partition_keys()))
 
+    def __eq__(self, other: object) -> bool:
+        return (
+            isinstance(other, PartitionsSubsetDefinition)
+            and self.partitions_def == other.partitions_def
+            and self.partitions_subset == other.partitions_subset
+        )
+
+    def __len__(self) -> int:
+        return len(self.partitions_subset)
+
+    def __contains__(self, value) -> bool:
+        return value in self.partitions_subset
+
 
 @whitelist_for_serdes
 class SerializedPartitionsSubset(NamedTuple):

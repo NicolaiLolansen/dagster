@@ -399,10 +399,9 @@ def get_partition_subsets(
 
 def build_partition_statuses(
     dynamic_partitions_store: DynamicPartitionsStore,
-    materialized_partitions_subset: Optional[PartitionsSubsetDefinition],
-    failed_partitions_subset: Optional[PartitionsSubsetDefinition],
-    in_progress_partitions_subset: Optional[PartitionsSubsetDefinition],
-    partitions_def: Optional[PartitionsDefinition],
+    materialized_partitions_subset_definition: Optional[PartitionsSubsetDefinition],
+    failed_partitions_subset_definition: Optional[PartitionsSubsetDefinition],
+    in_progress_partitions_subset_definition: Optional[PartitionsSubsetDefinition],
 ) -> Union[
     "GrapheneTimePartitionStatuses",
     "GrapheneDefaultPartitionStatuses",
@@ -415,9 +414,9 @@ def build_partition_statuses(
     )
 
     if (
-        materialized_partitions_subset is None
-        and failed_partitions_subset is None
-        and in_progress_partitions_subset is None
+        materialized_partitions_subset_definition is None
+        and failed_partitions_subset_definition is None
+        and in_progress_partitions_subset_definition is None
     ):
         return GrapheneDefaultPartitionStatuses(
             materializedPartitions=[],
@@ -427,10 +426,12 @@ def build_partition_statuses(
         )
 
     materialized_partitions_subset = check.not_none(
-        materialized_partitions_subset
+        materialized_partitions_subset_definition
     ).partitions_subset
-    failed_partitions_subset = check.not_none(failed_partitions_subset).partitions_subset
-    in_progress_partitions_subset = check.not_none(in_progress_partitions_subset).partitions_subset
+    failed_partitions_subset = check.not_none(failed_partitions_subset_definition).partitions_subset
+    in_progress_partitions_subset = check.not_none(in_progress_partitions_subset_definition)
+    partitions_def = check.not_none(materialized_partitions_subset_definition).partitions_def
+
     check.invariant(
         type(materialized_partitions_subset)
         == type(failed_partitions_subset)
@@ -442,9 +443,9 @@ def build_partition_statuses(
     if isinstance(materialized_partitions_subset, TimeWindowPartitionsSubset):
         ranges = fetch_flattened_time_window_ranges(
             {
-                PartitionRangeStatus.MATERIALIZED: materialized_partitions_subset,
+                PartitionRangeStatus.MATERIALIZED: materialized_partitions_subset.partitions_subset,
                 PartitionRangeStatus.FAILED: cast(
-                    TimeWindowPartitionsSubset, failed_partitions_subset
+                    TimeWindowPartitionsSubset, failed_partitions_subset.partitions
                 ),
                 PartitionRangeStatus.MATERIALIZING: cast(
                     TimeWindowPartitionsSubset, in_progress_partitions_subset
@@ -467,7 +468,6 @@ def build_partition_statuses(
             )
         return GrapheneTimePartitionStatuses(ranges=graphene_ranges)
     elif isinstance(partitions_def, MultiPartitionsDefinition):
-        # elif isinstance(materialized_partitions_subset, MultiPartitionsSubset):
         return get_2d_run_length_encoded_partitions(
             dynamic_partitions_store,
             materialized_partitions_subset,
@@ -476,7 +476,6 @@ def build_partition_statuses(
             partitions_def,
         )
     elif partitions_def:
-        # elif isinstance(materialized_partitions_subset, DefaultPartitionsSubset):
         materialized_keys = materialized_partitions_subset.get_partition_keys()
         failed_keys = failed_partitions_subset.get_partition_keys()
         in_progress_keys = in_progress_partitions_subset.get_partition_keys()
@@ -611,7 +610,6 @@ def get_2d_run_length_encoded_partitions(
                             dim2_materialized_partition_subset_by_dim1[start_key],
                             dim2_failed_partition_subset_by_dim1[start_key],
                             dim2_in_progress_partition_subset_by_dim1[start_key],
-                            secondary_dim.partitions_def,
                         ),
                     )
                 )
