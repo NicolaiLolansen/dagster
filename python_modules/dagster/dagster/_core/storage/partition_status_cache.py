@@ -18,6 +18,7 @@ from dagster._core.definitions.partition import (
     DynamicPartitionsDefinition,
     PartitionsDefinition,
     PartitionsSubset,
+    PartitionsSubsetDefinition,
     StaticPartitionsDefinition,
 )
 from dagster._core.definitions.time_window_partitions import TimeWindowPartitionsDefinition
@@ -145,7 +146,7 @@ class AssetStatusCacheValue(
 
     def deserialize_materialized_partition_subsets(
         self, partitions_def: PartitionsDefinition
-    ) -> PartitionsSubset:
+    ) -> PartitionsSubsetDefinition:
         if not self.serialized_materialized_partition_subset:
             return partitions_def.empty_subset()
 
@@ -153,7 +154,7 @@ class AssetStatusCacheValue(
 
     def deserialize_failed_partition_subsets(
         self, partitions_def: PartitionsDefinition
-    ) -> PartitionsSubset:
+    ) -> PartitionsSubsetDefinition:
         if not self.serialized_failed_partition_subset:
             return partitions_def.empty_subset()
 
@@ -161,7 +162,7 @@ class AssetStatusCacheValue(
 
     def deserialize_in_progress_partition_subsets(
         self, partitions_def: PartitionsDefinition
-    ) -> PartitionsSubset:
+    ) -> PartitionsSubsetDefinition:
         if not self.serialized_in_progress_partition_subset:
             return partitions_def.empty_subset()
 
@@ -260,9 +261,9 @@ def _build_status_cache(
         partitions_def_id=partitions_def.get_serializable_unique_identifier(
             dynamic_partitions_store=dynamic_partitions_store
         ),
-        serialized_materialized_partition_subset=serialized_materialized_partition_subset.serialize(),
-        serialized_failed_partition_subset=failed_subset.serialize(),
-        serialized_in_progress_partition_subset=in_progress_subset.serialize(),
+        serialized_materialized_partition_subset=serialized_materialized_partition_subset.partitions_subset.serialize(),
+        serialized_failed_partition_subset=failed_subset.partitions_subset.serialize(),
+        serialized_in_progress_partition_subset=in_progress_subset.partitions_subset.serialize(),
         earliest_in_progress_materialization_event_id=cursor,
     )
 
@@ -272,7 +273,7 @@ def build_failed_and_in_progress_partition_subset(
     asset_key: AssetKey,
     partitions_def: PartitionsDefinition,
     dynamic_partitions_store: DynamicPartitionsStore,
-) -> Tuple[PartitionsSubset, PartitionsSubset, Optional[int]]:
+) -> Tuple[PartitionsSubsetDefinition, PartitionsSubsetDefinition, Optional[int]]:
     incomplete_materializations = instance.event_log_storage.get_latest_asset_partition_materialization_attempts_without_materializations(
         asset_key
     )
@@ -332,7 +333,7 @@ def _get_updated_failed_and_in_progress_partition_subset(
     current_cached_subset: PartitionsSubset,
     unevaluated_event_records: Sequence[EventLogRecord],
     dynamic_partitions_store: DynamicPartitionsStore,
-) -> Tuple[PartitionsSubset, PartitionsSubset, Optional[int]]:
+) -> Tuple[PartitionsSubsetDefinition, PartitionsSubsetDefinition, Optional[int]]:
     current_failed_partitions = set(current_cached_subset.get_partition_keys())
 
     cursor = None
@@ -443,7 +444,7 @@ def _get_updated_status_cache(
             dynamic_partitions_store=dynamic_partitions_store
         )
     )
-    materialized_subset: PartitionsSubset = (
+    materialized_subset: PartitionsSubsetDefinition = (
         partitions_def.deserialize_subset(
             stored_cache_value.serialized_materialized_partition_subset
         )
@@ -468,7 +469,7 @@ def _get_updated_status_cache(
         )
     )
 
-    failed_subset: PartitionsSubset = (
+    failed_subset: PartitionsSubsetDefinition = (
         partitions_def.deserialize_subset(stored_cache_value.serialized_failed_partition_subset)
         if stored_cache_value and stored_cache_value.serialized_failed_partition_subset
         else partitions_def.empty_subset()
@@ -482,7 +483,7 @@ def _get_updated_status_cache(
         instance,
         asset_key,
         partitions_def,
-        failed_subset,
+        failed_subset.partitions_subset,
         unevaluated_event_records,
         dynamic_partitions_store=dynamic_partitions_store,
     )
@@ -490,9 +491,9 @@ def _get_updated_status_cache(
     return AssetStatusCacheValue(
         latest_storage_id=latest_storage_id,
         partitions_def_id=stored_cache_value.partitions_def_id,
-        serialized_materialized_partition_subset=materialized_subset.serialize(),
-        serialized_failed_partition_subset=failed_subset.serialize(),
-        serialized_in_progress_partition_subset=in_progress_subset.serialize(),
+        serialized_materialized_partition_subset=materialized_subset.partitions_subset.serialize(),
+        serialized_failed_partition_subset=failed_subset.partitions_subset.serialize(),
+        serialized_in_progress_partition_subset=in_progress_subset.partitions_subset.serialize(),
         earliest_in_progress_materialization_event_id=new_cursor,
     )
 

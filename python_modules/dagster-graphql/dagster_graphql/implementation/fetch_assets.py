@@ -34,6 +34,7 @@ from dagster._core.definitions.partition import (
     CachingDynamicPartitionsLoader,
     PartitionsDefinition,
     PartitionsSubset,
+    PartitionsSubsetDefinition,
 )
 from dagster._core.definitions.time_window_partitions import (
     PartitionRangeStatus,
@@ -331,7 +332,11 @@ def get_partition_subsets(
     asset_key: AssetKey,
     dynamic_partitions_loader: DynamicPartitionsStore,
     partitions_def: Optional[PartitionsDefinition] = None,
-) -> Tuple[Optional[PartitionsSubset], Optional[PartitionsSubset], Optional[PartitionsSubset]]:
+) -> Tuple[
+    Optional[PartitionsSubsetDefinition],
+    Optional[PartitionsSubsetDefinition],
+    Optional[PartitionsSubsetDefinition],
+]:
     """Returns a tuple of PartitionSubset objects: the first is the materialized partitions,
     the second is the failed partitions, and the third are in progress.
     """
@@ -360,7 +365,11 @@ def get_partition_subsets(
             else partitions_def.empty_subset()
         )
 
-        return materialized_subset, failed_subset, in_progress_subset
+        return (
+            PartitionsSubsetDefinition(partitions_def, materialized_subset),
+            PartitionsSubsetDefinition(partitions_def, failed_subset),
+            PartitionsSubsetDefinition(partitions_def, in_progress_subset),
+        )
 
     else:
         # If the partition status can't be cached, fetch partition status from storage
@@ -390,9 +399,9 @@ def get_partition_subsets(
 
 def build_partition_statuses(
     dynamic_partitions_store: DynamicPartitionsStore,
-    materialized_partitions_subset: Optional[PartitionsSubset],
-    failed_partitions_subset: Optional[PartitionsSubset],
-    in_progress_partitions_subset: Optional[PartitionsSubset],
+    materialized_partitions_subset: Optional[PartitionsSubsetDefinition],
+    failed_partitions_subset: Optional[PartitionsSubsetDefinition],
+    in_progress_partitions_subset: Optional[PartitionsSubsetDefinition],
     partitions_def: Optional[PartitionsDefinition],
 ) -> Union[
     "GrapheneTimePartitionStatuses",
@@ -417,9 +426,11 @@ def build_partition_statuses(
             materializingPartitions=[],
         )
 
-    materialized_partitions_subset = check.not_none(materialized_partitions_subset)
-    failed_partitions_subset = check.not_none(failed_partitions_subset)
-    in_progress_partitions_subset = check.not_none(in_progress_partitions_subset)
+    materialized_partitions_subset = check.not_none(
+        materialized_partitions_subset
+    ).partitions_subset
+    failed_partitions_subset = check.not_none(failed_partitions_subset).partitions_subset
+    in_progress_partitions_subset = check.not_none(in_progress_partitions_subset).partitions_subset
     check.invariant(
         type(materialized_partitions_subset)
         == type(failed_partitions_subset)
@@ -428,8 +439,7 @@ def build_partition_statuses(
         " in_progress_partitions_subset to be of the same type",
     )
 
-    if isinstance(partitions_def, TimeWindowPartitionsDefinition):
-        # if isinstance(materialized_partitions_subset, TimeWindowPartitionsSubset):
+    if isinstance(materialized_partitions_subset, TimeWindowPartitionsSubset):
         ranges = fetch_flattened_time_window_ranges(
             {
                 PartitionRangeStatus.MATERIALIZED: materialized_partitions_subset,

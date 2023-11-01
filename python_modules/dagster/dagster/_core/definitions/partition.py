@@ -240,8 +240,10 @@ class PartitionsDefinition(ABC, Generic[T_str]):
             )
         )
 
-    def deserialize_subset(self, serialized: str) -> "PartitionsSubset":
-        return self.partitions_subset_class.from_serialized(self, serialized)
+    def deserialize_subset(self, serialized: str) -> "PartitionsSubsetDefinition":
+        return PartitionsSubsetDefinition(
+            self, self.partitions_subset_class.from_serialized(self, serialized)
+        )
 
     def can_deserialize_subset(
         self,
@@ -1079,7 +1081,8 @@ class PartitionsSubsetDefinition(NamedTuple):
         partitions_subset_class: Type["PartitionsSubset"],
     ) -> "PartitionsSubsetDefinition":
         return PartitionsSubsetDefinition(
-            partitions_def, partitions_subset_class.empty_subset(partitions_def)
+            partitions_def,
+            partitions_subset_class.empty_subset(partitions_def),
         )
 
     def with_partition_keys(self, partition_keys: Iterable[str]) -> "PartitionsSubsetDefinition":
@@ -1127,6 +1130,27 @@ class PartitionsSubsetDefinition(NamedTuple):
             check.failed("laksdjalsk")
 
         return self.partitions_subset.get_included_time_windows()
+
+    def __or__(self, other: "PartitionsSubsetDefinition") -> "PartitionsSubsetDefinition":
+        if self is other:
+            return self
+        return self.with_partition_keys(other.get_partition_keys())
+
+    def __sub__(self, other: "PartitionsSubsetDefinition") -> "PartitionsSubsetDefinition":
+        if self is other:
+            return self.empty_subset(self.partitions_def, type(self.partitions_subset))
+        return self.empty_subset(
+            self.partitions_def, type(self.partitions_subset)
+        ).with_partition_keys(
+            set(self.get_partition_keys()).difference(set(other.get_partition_keys()))
+        )
+
+    def __and__(self, other: "PartitionsSubsetDefinition") -> "PartitionsSubsetDefinition":
+        if self is other:
+            return self
+        return self.empty_subset(
+            self.partitions_def, type(self.partitions_subset)
+        ).with_partition_keys(set(self.get_partition_keys()) & set(other.get_partition_keys()))
 
 
 @whitelist_for_serdes

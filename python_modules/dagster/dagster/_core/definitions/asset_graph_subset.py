@@ -6,7 +6,7 @@ from typing import AbstractSet, Any, Callable, Dict, Iterable, Mapping, Optional
 from dagster import _check as check
 from dagster._core.definitions.partition import (
     PartitionsDefinition,
-    PartitionsSubset,
+    PartitionsSubsetDefinition,
 )
 from dagster._core.errors import (
     DagsterDefinitionChangedDeserializationError,
@@ -21,7 +21,9 @@ class AssetGraphSubset:
     def __init__(
         self,
         asset_graph: AssetGraph,
-        partitions_subsets_by_asset_key: Optional[Mapping[AssetKey, PartitionsSubset]] = None,
+        partitions_subsets_by_asset_key: Optional[
+            Mapping[AssetKey, PartitionsSubsetDefinition]
+        ] = None,
         non_partitioned_asset_keys: Optional[AbstractSet[AssetKey]] = None,
     ):
         self._asset_graph = asset_graph
@@ -33,7 +35,7 @@ class AssetGraphSubset:
         return self._asset_graph
 
     @property
-    def partitions_subsets_by_asset_key(self) -> Mapping[AssetKey, PartitionsSubset]:
+    def partitions_subsets_by_asset_key(self) -> Mapping[AssetKey, PartitionsSubsetDefinition]:
         return self._partitions_subsets_by_asset_key
 
     @property
@@ -52,7 +54,7 @@ class AssetGraphSubset:
             len(subset) for subset in self._partitions_subsets_by_asset_key.values()
         )
 
-    def get_partitions_subset(self, asset_key: AssetKey) -> PartitionsSubset:
+    def get_partitions_subset(self, asset_key: AssetKey) -> PartitionsSubsetDefinition:
         partitions_def = self.asset_graph.get_partitions_def(asset_key)
         if partitions_def is None:
             check.failed("Can only call get_partitions_subset on a partitioned asset")
@@ -90,7 +92,7 @@ class AssetGraphSubset:
     ) -> Mapping[str, object]:
         return {
             "partitions_subsets_by_asset_key": {
-                key.to_user_string(): value.serialize()
+                key.to_user_string(): value.partitions_subset.serialize()
                 for key, value in self.partitions_subsets_by_asset_key.items()
             },
             "serializable_partitions_def_ids_by_asset_key": {
@@ -255,7 +257,7 @@ class AssetGraphSubset:
         partitions_def_class_names_by_asset_key = serialized_dict.get(
             "partitions_def_class_names_by_asset_key", {}
         )
-        partitions_subsets_by_asset_key: Dict[AssetKey, PartitionsSubset] = {}
+        partitions_subsets_by_asset_key: Dict[AssetKey, PartitionsSubsetDefinition] = {}
         for key, value in serialized_dict["partitions_subsets_by_asset_key"].items():
             asset_key = AssetKey.from_user_string(key)
 
@@ -323,7 +325,7 @@ class AssetGraphSubset:
         dynamic_partitions_store: DynamicPartitionsStore,
         current_time: datetime,
     ) -> "AssetGraphSubset":
-        partitions_subsets_by_asset_key: Dict[AssetKey, PartitionsSubset] = {}
+        partitions_subsets_by_asset_key: Dict[AssetKey, PartitionsSubsetDefinition] = {}
         non_partitioned_asset_keys: Set[AssetKey] = set()
 
         for asset_key in asset_keys:
