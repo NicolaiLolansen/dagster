@@ -8,8 +8,6 @@ import {
   Dialog,
   DialogBody,
   DialogFooter,
-  DialogHeader,
-  Headline,
   Mono,
   NonIdealState,
   Spinner,
